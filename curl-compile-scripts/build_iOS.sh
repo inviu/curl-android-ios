@@ -4,7 +4,7 @@ realpath() {
     [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
 }
 
-XCODE="/Applications/Xcode.app/Contents/Developer"
+XCODE=$(xcode-select -p)
 if [ ! -d "$XCODE" ]; then
 	echo "You have to install Xcode and the command line tools first"
 	exit 1
@@ -36,7 +36,7 @@ git apply ../patches/patch_curl_fixes1172.diff
 export CC="$XCODE/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
 DESTDIR="$SCRIPTPATH/../prebuilt-with-ssl/iOS"
 
-export IPHONEOS_DEPLOYMENT_TARGET="7"
+export IPHONEOS_DEPLOYMENT_TARGET="10"
 ARCHS=(armv7 armv7s arm64 i386 x86_64)
 HOSTS=(armv7 armv7s arm i386 x86_64)
 PLATFORMS=(iPhoneOS iPhoneOS iPhoneOS iPhoneSimulator iPhoneSimulator)
@@ -86,24 +86,11 @@ lipo -create -output libcurl.a libcurl-*.a
 rm libcurl-*.a
 
 #Copying cURL headers
+if [ -d "$DESTDIR/include" ]; then
+	echo "Cleaning headers"
+	rm -rf "$DESTDIR/include"
+fi
 cp -R "$CURLPATH/include" "$DESTDIR/"
 rm "$DESTDIR/include/curl/.gitignore"
-
-#Patch headers for 64-bit archs
-cd "$DESTDIR/include/curl"
-sed 's/#define CURL_SIZEOF_LONG 8/\
-#ifdef __LP64__\
-#define CURL_SIZEOF_LONG 8\
-#else\
-#define CURL_SIZEOF_LONG 4\
-#endif/'< curlbuild.h > curlbuild.h.temp
-
-sed 's/#define CURL_SIZEOF_CURL_OFF_T 8/\
-#ifdef __LP64__\
-#define CURL_SIZEOF_CURL_OFF_T 8\
-#else\
-#define CURL_SIZEOF_CURL_OFF_T 4\
-#endif/' < curlbuild.h.temp > curlbuild.h
-rm curlbuild.h.temp
 
 cd "$PWD"
